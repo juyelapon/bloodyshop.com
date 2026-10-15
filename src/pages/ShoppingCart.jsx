@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -20,6 +21,7 @@ const ShoppingCart = () => {
     }
 
     loadCart()
+
     window.addEventListener('cartUpdated', loadCart)
     window.addEventListener('storage', loadCart)
 
@@ -48,6 +50,7 @@ const ShoppingCart = () => {
 
       const currentQuantity = Math.max(1, Number(item.quantity) || 1)
       const stock = Math.max(1, Number(item.stock) || 1)
+
       const newQuantity = Math.max(
         1,
         Math.min(stock, currentQuantity + change)
@@ -80,17 +83,26 @@ const ShoppingCart = () => {
   }
 
   const subtotal = cart.reduce((sum, item) => {
-    return sum + getUnitPrice(item) * Math.max(1, Number(item.quantity) || 1)
+    return (
+      sum +
+      getUnitPrice(item) * Math.max(1, Number(item.quantity) || 1)
+    )
   }, 0)
 
   const originalSubtotal = cart.reduce((sum, item) => {
-    return sum + getOriginalPrice(item) * Math.max(1, Number(item.quantity) || 1)
+    return (
+      sum +
+      getOriginalPrice(item) * Math.max(1, Number(item.quantity) || 1)
+    )
   }, 0)
 
   const discountTotal = Math.max(0, originalSubtotal - subtotal)
-  const shipping = subtotal === 0 || subtotal >= FREE_SHIPPING_THRESHOLD
-    ? 0
-    : SHIPPING_FEE
+
+  const shipping =
+    subtotal === 0 || subtotal >= FREE_SHIPPING_THRESHOLD
+      ? 0
+      : SHIPPING_FEE
+
   const total = subtotal + shipping
 
   const handleCheckout = () => {
@@ -102,58 +114,69 @@ const ShoppingCart = () => {
     navigate('/checkout')
   }
 
+  // Empty cart হলে Categories page-এ নিয়ে যাবে।
+  const handleStartShopping = () => {
+    navigate('/categories')
+  }
+
   return (
     <main className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 md:py-14 lg:px-8">
         <div className="mb-8 md:mb-10">
-          <p className="text-sm font-semibold uppercase tracking-widest text-blue-600 mb-2">
+          <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-blue-600">
             Your Shopping Bag
           </p>
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
+
+          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
             Shopping Cart
           </h1>
-          <p className="text-gray-500 mt-3">
+
+          <p className="mt-3 text-gray-500">
             Review your items and manage your order.
           </p>
         </div>
 
         {cart.length === 0 ? (
-          <section className="bg-white border border-gray-100 rounded-3xl px-5 py-16 sm:py-20 text-center shadow-sm">
-            <div className="w-24 h-24 mx-auto rounded-full bg-blue-50 flex items-center justify-center text-5xl">
+          <section className="rounded-3xl border border-gray-100 bg-white px-5 py-16 text-center shadow-sm sm:py-20">
+            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-blue-50 text-5xl">
               🛒
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mt-7">
+            <h2 className="mt-7 text-2xl font-bold text-gray-900">
               Your cart is empty
             </h2>
 
-            <p className="text-gray-500 mt-3 max-w-md mx-auto leading-7">
+            <p className="mx-auto mt-3 max-w-md leading-7 text-gray-500">
               Looks like you haven't added anything to your cart yet.
               Explore our collection and find something you love.
             </p>
 
-            <Link
-              to="/"
-              className="inline-flex items-center justify-center gap-2 mt-7 rounded-xl bg-blue-600 px-7 py-4 text-white font-semibold hover:bg-blue-700 transition shadow-lg shadow-blue-100"
+            <button
+              type="button"
+              onClick={handleStartShopping}
+              className="mt-7 inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-4 font-semibold text-white shadow-lg shadow-blue-100 transition hover:bg-blue-700"
             >
               Start Shopping <span>→</span>
-            </Link>
+            </button>
           </section>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 lg:gap-9">
-            <section className="lg:col-span-2 space-y-5">
+          <div className="grid grid-cols-1 gap-7 lg:grid-cols-3 lg:gap-9">
+            <section className="space-y-5 lg:col-span-2">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-lg font-bold text-gray-900">
-                  Your Items ({cart.reduce(
-                    (sum, item) => sum + Math.max(1, Number(item.quantity) || 1),
+                  Your Items (
+                  {cart.reduce(
+                    (sum, item) =>
+                      sum + Math.max(1, Number(item.quantity) || 1),
                     0
-                  )})
+                  )}
+                  )
                 </h2>
 
                 <button
                   type="button"
                   onClick={clearCart}
-                  className="text-sm font-semibold text-red-500 hover:text-red-700 transition"
+                  className="text-sm font-semibold text-red-500 transition hover:text-red-700"
                 >
                   Clear Cart
                 </button>
@@ -162,21 +185,21 @@ const ShoppingCart = () => {
               {cart.map((item) => (
                 <article
                   key={item.id}
-                  className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-6 shadow-sm"
+                  className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-6"
                 >
-                  <div className="flex flex-col sm:flex-row gap-5">
+                  <div className="flex flex-col gap-5 sm:flex-row">
                     <Link
                       to={`/product/${item.id}`}
-                      className="w-full sm:w-36 h-48 sm:h-36 shrink-0 bg-gray-50 rounded-xl flex items-center justify-center p-4"
+                      className="flex h-48 w-full shrink-0 items-center justify-center rounded-xl bg-gray-50 p-4 sm:h-36 sm:w-36"
                     >
                       <img
                         src={item.thumbnail}
                         alt={item.title}
-                        className="w-full h-full object-contain"
+                        className="h-full w-full object-contain"
                       />
                     </Link>
 
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
@@ -185,12 +208,12 @@ const ShoppingCart = () => {
 
                           <Link
                             to={`/product/${item.id}`}
-                            className="block text-lg font-bold text-gray-900 mt-2 hover:text-blue-600 transition"
+                            className="mt-2 block text-lg font-bold text-gray-900 transition hover:text-blue-600"
                           >
                             {item.title}
                           </Link>
 
-                          <p className="text-sm text-gray-500 mt-2 line-clamp-2">
+                          <p className="mt-2 line-clamp-2 text-sm text-gray-500">
                             {item.description}
                           </p>
                         </div>
@@ -200,7 +223,7 @@ const ShoppingCart = () => {
                           onClick={() => removeItem(item.id)}
                           aria-label={`Remove ${item.title}`}
                           title="Remove product"
-                          className="w-10 h-10 shrink-0 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition flex items-center justify-center"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-400 transition hover:bg-red-50 hover:text-red-500"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -221,14 +244,14 @@ const ShoppingCart = () => {
                         </button>
                       </div>
 
-                      <div className="flex flex-wrap items-center justify-between gap-4 mt-5">
-                        <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center overflow-hidden rounded-xl border border-gray-200">
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, -1)}
                             disabled={Number(item.quantity) <= 1}
                             aria-label="Decrease quantity"
-                            className="w-10 h-10 text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition"
+                            className="h-10 w-10 text-gray-700 transition hover:bg-gray-100 disabled:opacity-40"
                           >
                             −
                           </button>
@@ -241,10 +264,11 @@ const ShoppingCart = () => {
                             type="button"
                             onClick={() => updateQuantity(item.id, 1)}
                             disabled={
-                              Number(item.quantity) >= Number(item.stock)
+                              Number(item.quantity || 1) >=
+                              Math.max(1, Number(item.stock) || 1)
                             }
                             aria-label="Increase quantity"
-                            className="w-10 h-10 text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition"
+                            className="h-10 w-10 text-gray-700 transition hover:bg-gray-100 disabled:opacity-40"
                           >
                             +
                           </button>
@@ -254,10 +278,11 @@ const ShoppingCart = () => {
                           <p className="text-lg font-bold text-gray-900">
                             {formatPrice(
                               getUnitPrice(item) *
-                              Math.max(1, Number(item.quantity) || 1)
+                                Math.max(1, Number(item.quantity) || 1)
                             )}
                           </p>
-                          <p className="text-xs text-gray-400 mt-1">
+
+                          <p className="mt-1 text-xs text-gray-400">
                             {formatPrice(getUnitPrice(item))} per item
                           </p>
                         </div>
@@ -269,19 +294,19 @@ const ShoppingCart = () => {
 
               <Link
                 to="/"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800 transition"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 transition hover:text-blue-800"
               >
                 <span>←</span> Continue Shopping
               </Link>
             </section>
 
             <aside className="lg:col-span-1">
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-7 shadow-sm lg:sticky lg:top-6">
+              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm lg:sticky lg:top-24 sm:p-7">
                 <h2 className="text-xl font-bold text-gray-900">
                   Order Summary
                 </h2>
 
-                <div className="space-y-4 mt-7">
+                <div className="mt-7 space-y-4">
                   <div className="flex justify-between gap-3 text-sm">
                     <span className="text-gray-500">Subtotal</span>
                     <span className="font-semibold text-gray-900">
@@ -298,12 +323,18 @@ const ShoppingCart = () => {
 
                   <div className="flex justify-between gap-3 text-sm">
                     <span className="text-gray-500">Shipping</span>
-                    <span className={`font-semibold ${shipping === 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                    <span
+                      className={`font-semibold ${
+                        shipping === 0
+                          ? 'text-green-600'
+                          : 'text-gray-900'
+                      }`}
+                    >
                       {shipping === 0 ? 'Free' : formatPrice(shipping)}
                     </span>
                   </div>
 
-                  <div className="border-t border-dashed border-gray-200 pt-5 flex justify-between gap-3">
+                  <div className="flex justify-between gap-3 border-t border-dashed border-gray-200 pt-5">
                     <span className="font-bold text-gray-900">Total</span>
                     <span className="text-2xl font-bold text-gray-900">
                       {formatPrice(total)}
@@ -312,14 +343,15 @@ const ShoppingCart = () => {
                 </div>
 
                 {subtotal < FREE_SHIPPING_THRESHOLD && (
-                  <p className="text-xs text-gray-500 leading-5 mt-4">
-                    Add {formatPrice(FREE_SHIPPING_THRESHOLD - subtotal)} more
+                  <p className="mt-4 text-xs leading-5 text-gray-500">
+                    Add{' '}
+                    {formatPrice(FREE_SHIPPING_THRESHOLD - subtotal)} more
                     to qualify for free shipping.
                   </p>
                 )}
 
                 {subtotal >= FREE_SHIPPING_THRESHOLD && (
-                  <p className="text-xs text-green-600 leading-5 mt-4">
+                  <p className="mt-4 text-xs leading-5 text-green-600">
                     Great! Your order qualifies for free shipping.
                   </p>
                 )}
@@ -327,7 +359,7 @@ const ShoppingCart = () => {
                 <button
                   type="button"
                   onClick={handleCheckout}
-                  className="w-full mt-7 rounded-xl bg-blue-600 px-5 py-4 text-white font-semibold hover:bg-blue-700 transition shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                  className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-4 font-semibold text-white shadow-lg shadow-blue-100 transition hover:bg-blue-700"
                 >
                   Proceed to Checkout <span>→</span>
                 </button>
@@ -336,7 +368,7 @@ const ShoppingCart = () => {
                   <p
                     role="status"
                     aria-live="polite"
-                    className="mt-4 p-3 rounded-xl bg-blue-50 text-blue-700 text-sm leading-6"
+                    className="mt-4 rounded-xl bg-blue-50 p-3 text-sm leading-6 text-blue-700"
                   >
                     {checkoutMessage}
                   </p>
@@ -357,6 +389,7 @@ const ShoppingCart = () => {
                     <rect x="4" y="10" width="16" height="11" rx="2" />
                     <path d="M8 10V7a4 4 0 0 1 8 0v3" />
                   </svg>
+
                   Secure shopping experience
                 </div>
               </div>
