@@ -1,12 +1,21 @@
 
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from 'firebase/auth'
+import { auth } from '../firebase'
 
 const LoginRegister = () => {
   const navigate = useNavigate()
 
   const [isLogin, setIsLogin] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -18,6 +27,95 @@ const LoginRegister = () => {
   const [errors, setErrors] = useState({})
   const [message, setMessage] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
+
+  const saveUserProfile = (user) => {
+    const sessionUser = {
+      uid: user.uid,
+      fullName: user.displayName || user.email?.split('@')[0] || 'User',
+      name: user.displayName || user.email?.split('@')[0] || 'User',
+      email: user.email || '',
+      photoURL: user.photoURL || '',
+    }
+
+    localStorage.setItem(
+      'shophub_current_user',
+      JSON.stringify(sessionUser)
+    )
+
+    let existingProfile = {}
+
+    try {
+      const parsed = JSON.parse(
+        localStorage.getItem('shopHubUser') || 'null'
+      )
+
+      if (
+        parsed &&
+        parsed.email?.toLowerCase() === sessionUser.email.toLowerCase()
+      ) {
+        existingProfile = parsed
+      }
+    } catch {
+      existingProfile = {}
+    }
+
+    localStorage.setItem(
+      'shopHubUser',
+      JSON.stringify({
+        ...existingProfile,
+        ...sessionUser,
+        phone: existingProfile.phone || '',
+        address: existingProfile.address || '',
+        city: existingProfile.city || '',
+        postalCode: existingProfile.postalCode || '',
+        country: existingProfile.country || 'Bangladesh',
+      })
+    )
+
+    window.dispatchEvent(new Event('authUpdated'))
+  }
+
+  const getFirebaseError = (error) => {
+    switch (error.code) {
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.'
+
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return 'Invalid email or password.'
+
+      case 'auth/email-already-in-use':
+        return 'This email is already registered. Please log in.'
+
+      case 'auth/weak-password':
+        return 'Please choose a stronger password.'
+
+      case 'auth/popup-closed-by-user':
+        return 'The Google sign-in popup was closed before completion.'
+
+      case 'auth/popup-blocked':
+        return 'Your browser blocked the popup. Please allow popups and try again.'
+
+      case 'auth/cancelled-popup-request':
+        return 'A sign-in popup is already open. Please try again.'
+
+      case 'auth/network-request-failed':
+        return 'Network error. Please check your internet connection.'
+
+      case 'auth/unauthorized-domain':
+        return 'This website domain is not authorized in Firebase Authentication.'
+
+      case 'auth/operation-not-allowed':
+        return 'This sign-in method is not enabled in Firebase Console.'
+
+      case 'auth/account-exists-with-different-credential':
+        return 'An account already exists with this email using another sign-in method.'
+
+      default:
+        return error.message || 'Something went wrong. Please try again.'
+    }
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -84,7 +182,7 @@ const LoginRegister = () => {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
 
     setMessage('')
@@ -92,92 +190,31 @@ const LoginRegister = () => {
 
     if (!validateForm()) return
 
+    setIsLoading(true)
+
     try {
       const email = formData.email.trim().toLowerCase()
-
-      const savedUsers = JSON.parse(
-        localStorage.getItem('shopHubUsers') || '[]'
-      )
-
-      if (!Array.isArray(savedUsers)) {
-        setMessage('Unable to read account data. Please try again.')
-        return
-      }
-
-      let user
+      let userCredential
 
       if (isLogin) {
-        user = savedUsers.find(
-          (savedUser) =>
-            savedUser.email === email &&
-            savedUser.password === formData.password
-        )
-
-        if (!user) {
-          setMessage('Invalid email or password.')
-          return
-        }
-      } else {
-        const emailExists = savedUsers.some(
-          (savedUser) => savedUser.email === email
-        )
-
-        if (emailExists) {
-          setMessage(
-            'This email is already registered. Please log in.'
-          )
-          return
-        }
-
-        user = {
-          name: formData.name.trim(),
+        userCredential = await signInWithEmailAndPassword(
+          auth,
           email,
-          password: formData.password,
-        }
-
-        savedUsers.push(user)
-
-        localStorage.setItem(
-          'shopHubUsers',
-          JSON.stringify(savedUsers)
+          formData.password
         )
-      }
+      } else {
+        userCredential = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          formData.password
+        )
 
-      const sessionUser = {
-        fullName: user.name,
-        email: user.email,
-      }
-
-      localStorage.setItem(
-        'shophub_current_user',
-        JSON.stringify(sessionUser)
-      )
-
-      // Keep the existing MyAccount.jsx profile format compatible.
-      const existingProfile = (() => {
-        try {
-          return JSON.parse(
-            localStorage.getItem('shopHubUser') || 'null'
-          )
-        } catch {
-          return null
-        }
-      })()
-
-      localStorage.setItem(
-        'shopHubUser',
-        JSON.stringify({
-          ...existingProfile,
-          ...sessionUser,
-          phone: existingProfile?.phone || '',
-          address: existingProfile?.address || '',
-          city: existingProfile?.city || '',
-          postalCode: existingProfile?.postalCode || '',
-          country: existingProfile?.country || 'Bangladesh',
+        await updateProfile(userCredential.user, {
+          displayName: formData.name.trim(),
         })
-      )
+      }
 
-      window.dispatchEvent(new Event('authUpdated'))
+      saveUserProfile(userCredential.user)
 
       setIsSuccess(true)
       setMessage(
@@ -190,7 +227,38 @@ const LoginRegister = () => {
     } catch (error) {
       console.error('Authentication error:', error)
       setIsSuccess(false)
-      setMessage('Something went wrong. Please try again.')
+      setMessage(getFirebaseError(error))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setMessage('')
+    setIsSuccess(false)
+    setIsLoading(true)
+
+    try {
+      const provider = new GoogleAuthProvider()
+
+      provider.setCustomParameters({
+        prompt: 'select_account',
+      })
+
+      const result = await signInWithPopup(auth, provider)
+
+      saveUserProfile(result.user)
+
+      setIsSuccess(true)
+      setMessage('Google sign-in successful! Welcome to ShopHub.')
+
+      navigate('/')
+    } catch (error) {
+      console.error('Google sign-in error:', error)
+      setIsSuccess(false)
+      setMessage(getFirebaseError(error))
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -340,8 +408,39 @@ const LoginRegister = () => {
             </button>
           </div>
 
+          {/* Google Sign In */}
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+            className="mt-6 flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-5 py-3.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 48 48"
+              aria-hidden="true"
+            >
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z" />
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.73 7.18l7.63 5.91c4.45-4.11 7.14-10.16 7.14-17.56Z" />
+              <path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19Z" />
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.89l-7.63-5.91c-2.12 1.42-4.84 2.26-8.27 2.26-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 43.62 14.62 48 24 48Z" />
+            </svg>
+
+            {isLoading ? 'Please wait...' : 'Continue with Google'}
+          </button>
+
+          <div className="my-5 flex items-center gap-4">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-xs font-medium uppercase tracking-wider text-gray-400">
+              Or continue with email
+            </span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+
           {/* Form */}
-          <form onSubmit={handleSubmit} noValidate className="mt-7 space-y-5">
+          <form onSubmit={handleSubmit} noValidate className="space-y-5">
             {!isLogin && (
               <div>
                 <label
@@ -435,7 +534,7 @@ const LoginRegister = () => {
                     type="button"
                     onClick={() =>
                       setMessage(
-                        'Password recovery will be available after backend integration.'
+                        'Password recovery will be available after Firebase password reset is added.'
                       )
                     }
                     className="text-xs font-semibold text-blue-600 hover:text-blue-800"
@@ -553,7 +652,7 @@ const LoginRegister = () => {
                 className={`rounded-xl border p-3 text-sm leading-6 ${
                   isSuccess
                     ? 'border-green-200 bg-green-50 text-green-700'
-                    : 'border-blue-200 bg-blue-50 text-blue-700'
+                    : 'border-red-200 bg-red-50 text-red-700'
                 }`}
               >
                 {message}
@@ -563,10 +662,15 @@ const LoginRegister = () => {
             {/* Submit */}
             <button
               type="submit"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-4 font-semibold text-white shadow-lg shadow-blue-100 transition hover:-translate-y-0.5 hover:bg-blue-700 active:translate-y-0"
+              disabled={isLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-4 font-semibold text-white shadow-lg shadow-blue-100 transition hover:-translate-y-0.5 hover:bg-blue-700 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isLogin ? 'Login to Your Account' : 'Create Account'}
-              <span>→</span>
+              {isLoading
+                ? 'Please wait...'
+                : isLogin
+                  ? 'Login to Your Account'
+                  : 'Create Account'}
+              {!isLoading && <span>→</span>}
             </button>
           </form>
 
